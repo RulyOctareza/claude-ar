@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Claude Code CLI via AgentRouter API — https://agentrouter.org
+# Supports both bash and zsh.
+set -euo pipefail
+
+CONFIG_DIR="${HOME}/.config/agentrouter"
+KEY_FILE="${CONFIG_DIR}/key.env"
+SETTINGS_FILE="${CONFIG_DIR}/claude-ar-settings.json"
+
+if [[ ! -f "${KEY_FILE}" ]]; then
+  echo "First-time setup: create API key config"
+  echo ""
+  echo "  mkdir -p ${CONFIG_DIR}"
+  echo "  cp ${CONFIG_DIR}/key.env.example ${KEY_FILE}"
+  echo "  chmod 600 ${KEY_FILE}"
+  echo ""
+  echo "Then edit ${KEY_FILE} and paste your API key from https://agentrouter.org"
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${KEY_FILE}"
+
+if [[ -z "${AGENTROUTER_API_KEY:-}" || "${AGENTROUTER_API_KEY}" == "sk-your-agentrouter-api-key-here" ]]; then
+  echo "Error: AGENTROUTER_API_KEY not set in ${KEY_FILE}"
+  echo "Get your key at https://agentrouter.org"
+  exit 1
+fi
+
+export ANTHROPIC_BASE_URL="https://agentrouter.org"
+export ANTHROPIC_API_KEY="${AGENTROUTER_API_KEY}"
+export ANTHROPIC_AUTH_TOKEN="${AGENTROUTER_API_KEY}"
+export ANTHROPIC_MODEL="claude-opus-4-8"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-4-8"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="gpt-5.5"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+export ANTHROPIC_DANGEROUSLY_NO_STREAM=1
+
+# Regenerate settings so auth overrides OAuth/keychain from Anthropic login.
+mkdir -p "${CONFIG_DIR}"
+cat > "${SETTINGS_FILE}" <<EOF
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://agentrouter.org",
+    "ANTHROPIC_API_KEY": "${AGENTROUTER_API_KEY}",
+    "ANTHROPIC_AUTH_TOKEN": "${AGENTROUTER_API_KEY}",
+    "ANTHROPIC_MODEL": "claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.5",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ANTHROPIC_DANGEROUSLY_NO_STREAM": "1"
+  }
+}
+EOF
+chmod 600 "${SETTINGS_FILE}"
+
+use_bare=false
+args=()
+
+for arg in "$@"; do
+  case "${arg}" in
+    --bare)
+      use_bare=true
+      ;;
+    --with-hooks)
+      # Default: hooks enabled (RTK, plugins, skills). Kept for compatibility.
+      ;;
+    *)
+      args+=("${arg}")
+      ;;
+  esac
+done
+
+claude_cmd=(claude --settings "${SETTINGS_FILE}")
+
+if [[ "${use_bare}" == true ]]; then
+  claude_cmd+=(--bare)
+fi
+
+exec "${claude_cmd[@]}" "${args[@]}"
