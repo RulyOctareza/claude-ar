@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/preview/hero.png" alt="claude-ar — ilustrasi CLI dengan routing multi-model" width="100%">
+  <img src="docs/preview/hero.svg" alt="claude-ar — ilustrasi CLI dengan routing multi-model" width="100%">
 </p>
 
 <h1 align="center">claude-ar</h1>
